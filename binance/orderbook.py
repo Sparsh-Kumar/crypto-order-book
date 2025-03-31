@@ -3,13 +3,20 @@ import os
 import websocket
 import requests
 
+config = {}
+with open("config.json", "r") as file:
+  config = json.load(file)
+
+WEBSOCKET_STREAM_ENDPOINT = config['FUTURES']['WEBSOCKET_STREAM_ENDPOINT']
+REST_API_ENDPOINT = config['FUTURES']['REST_API_ENDPOINT']
+
 class BinanceWebSocketClient:
 
-  def __init__(self, ticker='btcusdt'):
+  def __init__(self, url = '', ticker='btcusdt'):
     self.ws = None
     self.ticker = ticker
-    self.url = f'wss://stream.binance.com/stream?streams={self.ticker}@depth'
-    self.orderBook = OrderBook(self.ticker)
+    self.url = f'{url}?streams={self.ticker}@depth'
+    self.orderBook = OrderBook(REST_API_ENDPOINT, self.ticker)
 
   def connect(self):
     self.ws = websocket.WebSocketApp(
@@ -38,12 +45,12 @@ class BinanceWebSocketClient:
 
 class OrderBook:
 
-  def __init__(self, ticker = 'btcusdt', bids = [], asks = []):
+  def __init__(self, url = '', ticker = 'btcusdt', limit = 1000, bids = [], asks = []):
     self.bids = bids
     self.asks = asks
     self.ticker = ticker
     self.depthData = {}
-    self.url = f'https://api.binance.com/api/v3/depth?symbol={self.ticker.upper()}&limit=5000'
+    self.url = f'{url}/depth?symbol={self.ticker.upper()}&limit={limit}'
   
   def create(self, orderBookData: dict):
     if (not self.depthData):
@@ -96,6 +103,6 @@ class BinanceWebSocketService:
 
 
 if __name__ == "__main__":
-  client = BinanceWebSocketClient('btcusdt')
+  client = BinanceWebSocketClient(WEBSOCKET_STREAM_ENDPOINT, 'btcusdt')
   service = BinanceWebSocketService(client)
   service.start_stream()

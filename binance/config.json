@@ -1,0 +1,10 @@
+{
+  "SPOT": {
+    "WEBSOCKET_STREAM_ENDPOINT": "wss://stream.binance.com/stream",
+    "REST_API_ENDPOINT": "https://api.binance.com/api/v3"
+  },
+  "FUTURES": {
+    "WEBSOCKET_STREAM_ENDPOINT": "wss://fstream.binance.com/stream",
+    "REST_API_ENDPOINT": "https://fapi.binance.com/fapi/v1"
+  }
+}
