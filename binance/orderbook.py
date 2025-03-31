@@ -1,0 +1,101 @@
+import json
+import os
+import websocket
+import requests
+
+class BinanceWebSocketClient:
+
+  def __init__(self, ticker='btcusdt'):
+    self.ws = None
+    self.ticker = ticker
+    self.url = f'wss://stream.binance.com/stream?streams={self.ticker}@depth'
+    self.orderBook = OrderBook(self.ticker)
+
+  def connect(self):
+    self.ws = websocket.WebSocketApp(
+      self.url,
+      on_open=self.on_open,
+      on_message=self.on_message,
+      on_close=self.on_close
+    )
+    self.ws.run_forever()
+
+  def on_open(self, ws):
+    subscribe_message = {
+      "method": "SUBSCRIBE",
+      "params": [f"{self.ticker}@depth"],
+      "id": 1
+    }
+    ws.send(json.dumps(subscribe_message))
+
+  def on_message(self, ws, message):
+    data = json.loads(message)
+    self.orderBook.create(data)
+
+  def on_close(self, ws):
+    print("Connection closed")
+
+
+class OrderBook:
+
+  def __init__(self, ticker = 'btcusdt', bids = [], asks = []):
+    self.bids = bids
+    self.asks = asks
+    self.ticker = ticker
+    self.depthData = {}
+    self.url = f'https://api.binance.com/api/v3/depth?symbol={self.ticker.upper()}&limit=5000'
+  
+  def create(self, orderBookData: dict):
+    if (not self.depthData):
+      self.depthData = self.get_orderbook_depth()
+    u = orderBookData['data']['u']
+    U = orderBookData['data']['U']
+    lastUpdateId = self.depthData['lastUpdateId']
+    shouldDropEvent = (u < lastUpdateId)
+    firstProcessedEvent = (U <= lastUpdateId) and (u >= lastUpdateId)
+    if (firstProcessedEvent):
+      self.bids = orderBookData['data']['b']
+      self.asks = orderBookData['data']['a']
+    else:
+      self.bids = orderBookData['data']['b']
+      self.asks = orderBookData['data']['a']
+    self.display_order_book()
+  
+  def display_order_book(self):
+    os.system('cls' if os.name == 'nt' else 'clear')
+    order_book_str = f"{'Ask Price':>10} | {'Ask Size':>10} || {'Bid Price':>10} | {'Bid Size':>10}\n"
+    order_book_str += "-" * 50 + "\n"
+    
+    # TODO:Also make sure to remove the values for which the amount is 0.
+    # Do this while you are sorting.
+
+    asks = sorted(self.asks, key=lambda x: float(x[0]))
+    bids = sorted(self.bids, key=lambda x: float(x[0]), reverse=True)
+    max_rows = max(len(asks), len(bids))
+    for i in range(max_rows):
+      ask_price, ask_size = asks[i] if i < len(asks) else ("", "")
+      bid_size, bid_price = bids[i] if i < len(bids) else ("", "")
+      order_book_str += f"{str(ask_price):>10} | {str(ask_size):>10} || {str(bid_size):>10} | {str(bid_price):>10}\n"
+    print(order_book_str)
+
+  def get_orderbook_depth(self):
+    depthData = {}
+    depthResponse = requests.get(self.url)
+    if depthResponse.status_code == 200:
+      depthData = depthResponse.json()
+    return depthData
+
+
+class BinanceWebSocketService:
+
+  def __init__(self, client: BinanceWebSocketClient):
+    self.client = client
+
+  def start_stream(self):
+    self.client.connect()
+
+
+if __name__ == "__main__":
+  client = BinanceWebSocketClient('btcusdt')
+  service = BinanceWebSocketService(client)
+  service.start_stream()
