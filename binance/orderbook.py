@@ -12,11 +12,11 @@ REST_API_ENDPOINT = config['FUTURES']['REST_API_ENDPOINT']
 
 class BinanceWebSocketClient:
 
-  def __init__(self, url = '', ticker='btcusdt'):
+  def __init__(self, url = '', ticker='btcusdt', orderBook = None):
     self.ws = None
     self.ticker = ticker
     self.url = f'{url}?streams={self.ticker}@depth@100ms'
-    self.orderBook = OrderBook(REST_API_ENDPOINT, self.ticker)
+    self.orderBook = orderBook
 
   def connect(self):
     self.ws = websocket.WebSocketApp(
@@ -112,6 +112,7 @@ class BinanceWebSocketService:
 
 
 if __name__ == "__main__":
-  client = BinanceWebSocketClient(WEBSOCKET_STREAM_ENDPOINT, 'btcusdt')
+  orderBook = OrderBook(REST_API_ENDPOINT, 'btcusdt')
+  client = BinanceWebSocketClient(WEBSOCKET_STREAM_ENDPOINT, 'btcusdt', orderBook)
   service = BinanceWebSocketService(client)
   service.start_stream()
