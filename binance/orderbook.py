@@ -15,7 +15,7 @@ class BinanceWebSocketClient:
   def __init__(self, url = '', ticker='btcusdt'):
     self.ws = None
     self.ticker = ticker
-    self.url = f'{url}?streams={self.ticker}@depth'
+    self.url = f'{url}?streams={self.ticker}@depth@100'
     self.orderBook = OrderBook(REST_API_ENDPOINT, self.ticker)
 
   def connect(self):
