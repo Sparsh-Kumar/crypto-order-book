@@ -59,6 +59,8 @@ class OrderBook:
     U = orderBookData['data']['U']
     lastUpdateId = self.depthData['lastUpdateId']
     shouldDropEvent = (u < lastUpdateId)
+    if (shouldDropEvent):
+      return
     firstProcessedEvent = (U <= lastUpdateId) and (u >= lastUpdateId)
     if (firstProcessedEvent):
       self.bids = orderBookData['data']['b']
@@ -73,11 +75,17 @@ class OrderBook:
     order_book_str = f"{'Ask Price':>10} | {'Ask Size':>10} || {'Bid Price':>10} | {'Bid Size':>10}\n"
     order_book_str += "-" * 50 + "\n"
     
-    # TODO:Also make sure to remove the values for which the amount is 0.
-    # Do this while you are sorting.
+    asks = sorted(
+      (ask for ask in self.asks if float(ask[1]) > 0),
+      key=lambda x: float(x[0])
+    ) if self.asks else []
 
-    asks = sorted(self.asks, key=lambda x: float(x[0]))
-    bids = sorted(self.bids, key=lambda x: float(x[0]), reverse=True)
+    bids = sorted(
+      (bid for bid in self.bids if float(bid[1]) > 0),
+      key=lambda x: float(x[0]),
+      reverse=True
+    ) if self.bids else []
+
     max_rows = max(len(asks), len(bids))
     for i in range(max_rows):
       ask_price, ask_size = asks[i] if i < len(asks) else ("", "")
@@ -86,6 +94,7 @@ class OrderBook:
     print(order_book_str)
 
   def get_orderbook_depth(self):
+
     depthData = {}
     depthResponse = requests.get(self.url)
     if depthResponse.status_code == 200:
