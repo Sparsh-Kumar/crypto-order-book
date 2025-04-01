@@ -9,8 +9,8 @@ config = {}
 with open("config.json", "r") as file:
   config = json.load(file)
 
-WEBSOCKET_STREAM_ENDPOINT = config['FUTURES']['WEBSOCKET_STREAM_ENDPOINT']
-REST_API_ENDPOINT = config['FUTURES']['REST_API_ENDPOINT']
+WEBSOCKET_STREAM_ENDPOINT = config['SPOT']['WEBSOCKET_STREAM_ENDPOINT']
+REST_API_ENDPOINT = config['SPOT']['REST_API_ENDPOINT']
 
 class BinanceWebSocketClient:
 
@@ -58,6 +58,7 @@ class BinanceWebSocketClient:
 
     if (not self.checkLatencyRecords):
       self.onClose(ws)
+      return
 
     eventTime = datetime.fromtimestamp(data['data']['E'] / 1000, tz=timezone.utc)
     currentTime = datetime.now(timezone.utc)
@@ -70,6 +71,7 @@ class BinanceWebSocketClient:
   def onClose(self, ws):
     print("Connection closed")
     ws.close()
+    return
 
   def getAverageLatency(self):
     return self.totalLatency / self.checkLatencyRecordsCopy
@@ -145,7 +147,7 @@ class BinanceWebSocketService:
 
 if __name__ == "__main__":
   orderBook = OrderBook(REST_API_ENDPOINT, 'btcusdt')
-  client = BinanceWebSocketClient(WEBSOCKET_STREAM_ENDPOINT, 'btcusdt', orderBook, False)
+  client = BinanceWebSocketClient(WEBSOCKET_STREAM_ENDPOINT, 'btcusdt', orderBook, True)
   service = BinanceWebSocketService(client)
   service.start_stream()
   print(client.getAverageLatency())
