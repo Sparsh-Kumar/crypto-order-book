@@ -1,10 +1,12 @@
 {
   "SPOT": {
-    "WEBSOCKET_STREAM_ENDPOINT": "wss://stream.binance.com/stream",
+    "RAW_WEBSOCKET_STREAM_ENDPOINT_1": "wss://stream.binance.com:443/ws",
+    "RAW_WEBSOCKET_STREAM_ENDPOINT_2": "wss://stream.binance.com:9443/ws",
     "REST_API_ENDPOINT": "https://api.binance.com/api/v3"
   },
   "FUTURES": {
-    "WEBSOCKET_STREAM_ENDPOINT": "wss://fstream.binance.com/stream",
+    "RAW_WEBSOCKET_STREAM_ENDPOINT_1": "wss://stream.binance.com:443/ws",
+    "RAW_WEBSOCKET_STREAM_ENDPOINT_2": "wss://stream.binance.com:9443/ws",
     "REST_API_ENDPOINT": "https://fapi.binance.com/fapi/v1"
   }
 }

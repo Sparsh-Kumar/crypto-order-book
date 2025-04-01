@@ -9,7 +9,7 @@ config = {}
 with open("config.json", "r") as file:
   config = json.load(file)
 
-WEBSOCKET_STREAM_ENDPOINT = config['SPOT']['WEBSOCKET_STREAM_ENDPOINT']
+WEBSOCKET_STREAM_ENDPOINT = config['SPOT']['RAW_WEBSOCKET_STREAM_ENDPOINT_1']
 REST_API_ENDPOINT = config['SPOT']['REST_API_ENDPOINT']
 
 class BinanceWebSocketClient:
@@ -17,7 +17,7 @@ class BinanceWebSocketClient:
   def __init__(self, url = '', ticker='btcusdt', orderBook = None, checkLatency = False, checkLatencyRecords = 100):
     self.ws = None
     self.ticker = ticker
-    self.url = f'{url}?streams={self.ticker}@depth@100ms'
+    self.url = f'{url}/{ticker}@depth@100ms'
     self.orderBook = orderBook
     self.totalLatency = 0
     self.checkLatency = checkLatency
@@ -53,14 +53,14 @@ class BinanceWebSocketClient:
   def onCheckLatency(self, ws, message):
     data = json.loads(message)
 
-    if (not data['data']['E']):
+    if (not data['E']):
       return
 
     if (not self.checkLatencyRecords):
       self.onClose(ws)
       return
 
-    eventTime = datetime.fromtimestamp(data['data']['E'] / 1000, tz=timezone.utc)
+    eventTime = datetime.fromtimestamp(data['E'] / 1000, tz=timezone.utc)
     currentTime = datetime.now(timezone.utc)
     timeDiffInMs = int((currentTime - eventTime).total_seconds() * 1000)
     self.totalLatency += timeDiffInMs
@@ -89,19 +89,19 @@ class OrderBook:
   def create(self, orderBookData: dict):
     if (not self.depthData):
       self.depthData = self.get_orderbook_depth()
-    u = orderBookData['data']['u']
-    U = orderBookData['data']['U']
+    u = orderBookData['u']
+    U = orderBookData['U']
     lastUpdateId = self.depthData['lastUpdateId']
     shouldDropEvent = (u < lastUpdateId)
     if (shouldDropEvent):
       return
     firstProcessedEvent = (U <= lastUpdateId) and (u >= lastUpdateId)
     if (firstProcessedEvent):
-      self.bids = orderBookData['data']['b']
-      self.asks = orderBookData['data']['a']
+      self.bids = orderBookData['b']
+      self.asks = orderBookData['a']
     else:
-      self.bids = orderBookData['data']['b']
-      self.asks = orderBookData['data']['a']
+      self.bids = orderBookData['b']
+      self.asks = orderBookData['a']
     self.display_order_book()
   
   def display_order_book(self):
