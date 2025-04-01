@@ -14,7 +14,7 @@ REST_API_ENDPOINT = config['SPOT']['REST_API_ENDPOINT']
 
 class BinanceWebSocketClient:
 
-  def __init__(self, url = '', ticker='btcusdt', orderBook = None, checkLatency = False, checkLatencyRecords = 100):
+  def __init__(self, url = '', ticker='btcusdt', orderBook = None, checkLatency = False, checkLatencyRecords = 500):
     self.ws = None
     self.ticker = ticker
     self.url = f'{url}/{ticker}@depth@100ms'
