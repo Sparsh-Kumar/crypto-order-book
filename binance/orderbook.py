@@ -61,7 +61,7 @@ class BinanceWebSocketClient:
       return
 
     eventTime = datetime.fromtimestamp(data['E'] / 1000, tz=timezone.utc)
-    currentTime = datetime.now(timezone.utc)
+    currentTime = datetime.utcnow().replace(tzinfo=timezone.utc)
     timeDiffInMs = int((currentTime - eventTime).total_seconds() * 1000)
     self.totalLatency += timeDiffInMs
     self.checkLatencyRecords -= 1
