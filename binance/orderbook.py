@@ -164,6 +164,7 @@ async def main():
       session=session
     )
     await client.onConnect()
+    print(client.getAverageLatency())
 
 if __name__ == "__main__":
   asyncio.run(main())
