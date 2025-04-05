@@ -1,2 +1,4 @@
+aiohttp==3.11.16
 Requests==2.32.3
+uvloop==0.21.0
 websocket_client==1.8.0
