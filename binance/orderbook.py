@@ -2,6 +2,9 @@ import json
 import os
 import websocket
 import requests
+import aiohttp
+import asyncio
+import uvloop
 from datetime import datetime, timezone
 import time
 
@@ -12,9 +15,11 @@ with open("config.json", "r") as file:
 WEBSOCKET_STREAM_ENDPOINT = config['SPOT']['RAW_WEBSOCKET_STREAM_ENDPOINT_1']
 REST_API_ENDPOINT = config['SPOT']['REST_API_ENDPOINT']
 
+asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+
 class BinanceWebSocketClient:
 
-  def __init__(self, url = '', ticker='btcusdt', orderBook = None, checkLatency = False, checkLatencyRecords = 500):
+  def __init__(self, url = '', ticker='btcusdt', orderBook = None, checkLatency = False, checkLatencyRecords = 500, session = None):
     self.ws = None
     self.ticker = ticker
     self.url = f'{url}/{ticker}@depth@100ms'
@@ -23,41 +28,44 @@ class BinanceWebSocketClient:
     self.checkLatency = checkLatency
     self.checkLatencyRecords = checkLatencyRecords
     self.checkLatencyRecordsCopy = checkLatencyRecords
+    self.session = session
 
-  def onConnect(self):
+  async def onConnect(self):
+    async with self.session.ws_connect(self.url, compress=15) as ws:
+      await self.onOpen(ws)
+      async for msg in ws:
+        if msg.type == aiohttp.WSMsgType.TEXT:
+          data = msg.data
+          if self.checkLatency:
+            await self.onCheckLatency(ws, data)
+          else:
+            await self.onMessage(ws, data)
+        elif msg.type == aiohttp.WSMsgType.ERROR:
+          print('WebSocket Error:', msg)
+          await self.onClose(ws)
+          break
 
-    onMessageFunc = self.onMessage
-    if (self.checkLatency):
-      onMessageFunc = self.onCheckLatency
-
-    self.ws = websocket.WebSocketApp(
-      self.url,
-      on_open=self.onOpen,
-      on_message=onMessageFunc,
-      on_close=self.onClose
-    )
-    self.ws.run_forever()
-
-  def onOpen(self, ws):
+  async def onOpen(self, ws):
     subscribe_message = {
       "method": "SUBSCRIBE",
       "params": [f"{self.ticker}@depth"],
       "id": 1
     }
-    ws.send(json.dumps(subscribe_message))
+    await ws.send_str(json.dumps(subscribe_message))
 
-  def onMessage(self, ws, message):
+  async def onMessage(self, ws, message):
     data = json.loads(message)
     self.orderBook.create(data)
 
-  def onCheckLatency(self, ws, message):
+  async def onCheckLatency(self, ws, message):
     data = json.loads(message)
 
-    if (not data['E']):
+    event_time = data.get('E')
+    if event_time is None:
       return
 
     if (not self.checkLatencyRecords):
-      self.onClose(ws)
+      await self.onClose(ws)
       return
 
     eventTime = datetime.fromtimestamp(data['E'] / 1000, tz=timezone.utc)
@@ -68,9 +76,9 @@ class BinanceWebSocketClient:
     averageLatency = self.totalLatency / (self.checkLatencyRecordsCopy - self.checkLatencyRecords)
     print(f'Total Latency = {self.totalLatency}, Records Remaining = {self.checkLatencyRecords}, Records Checked = {self.checkLatencyRecordsCopy - self.checkLatencyRecords}, Average Latency = {averageLatency}')
 
-  def onClose(self, ws):
+  async def onClose(self, ws):
     print("Connection closed")
-    ws.close()
+    await ws.close()
     return
 
   def getAverageLatency(self):
@@ -145,9 +153,18 @@ class BinanceWebSocketService:
     self.client.onConnect()
 
 
+async def main():
+  async with aiohttp.ClientSession() as session:
+    orderBook = OrderBook(REST_API_ENDPOINT, 'btcusdt')
+    client = BinanceWebSocketClient(
+      WEBSOCKET_STREAM_ENDPOINT,
+      'btcusdt',
+      orderBook,
+      checkLatency=True,
+      session=session
+    )
+    await client.onConnect()
+    print(client.getAverageLatency())
+
 if __name__ == "__main__":
-  orderBook = OrderBook(REST_API_ENDPOINT, 'btcusdt')
-  client = BinanceWebSocketClient(WEBSOCKET_STREAM_ENDPOINT, 'btcusdt', orderBook, True)
-  service = BinanceWebSocketService(client)
-  service.start_stream()
-  print(client.getAverageLatency())
+  asyncio.run(main())
